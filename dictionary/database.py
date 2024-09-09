@@ -7,7 +7,9 @@ from sqlalchemy.orm import declarative_base, sessionmaker
 load_dotenv()
 
 # Setting the database
-database_url = os.environ.get("database")
+database_url = os.environ.get(
+    "database"
+)  # note: the database must be created in postgresql first
 
 engine = create_engine(database_url)
 
