@@ -6,10 +6,10 @@ from .enums import MasterLevel, WordTypes
 
 
 class DescriptionModel(BaseModel):
-    type: WordTypes | None = None
+    type: WordTypes | None = Field(default=None, examples=[None])
     in_polish: str
-    in_english: str | None = None
-    example: str | None = None
+    in_english: str | None = Field(default=None, examples=[None])
+    example: str | None = Field(default=None, examples=[None])
 
     class Config:
         use_enum_values = True
@@ -17,8 +17,14 @@ class DescriptionModel(BaseModel):
         orm_mode = True
 
 
-class DescriptionReturn(DescriptionModel):
+class DescriptionWithId(DescriptionModel):
     id: int
+
+    class Config:
+        use_enum_values = True
+
+
+class DescriptionReturn(DescriptionWithId):
     word_id: int
 
     class Config:
@@ -38,7 +44,6 @@ class WordModel(BaseModel):
 
 class WordReturn(WordModel):
     id: int
-    description: list[DescriptionModel] = []
     created: datetime.datetime
     updated: datetime.datetime
 
@@ -46,3 +51,13 @@ class WordReturn(WordModel):
         use_enum_values = True
         from_attributes = True
         orm_mode = True
+
+
+class DictWord(BaseModel):
+    word: WordReturn
+    description: list[DescriptionWithId]
+
+
+class DictWordShort(BaseModel):
+    word: str
+    description: list
