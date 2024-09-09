@@ -38,7 +38,9 @@ class Word(Base):
     master_level = Column(Enum(MasterLevel), default=MasterLevel.NEW)
     notes = Column(StrippedString(250))
     created = Column(DateTime, default=func.current_timestamp())
-    updated = Column(DateTime, onupdate=func.current_timestamp())
+    updated = Column(
+        DateTime, onupdate=func.current_timestamp(), default=func.current_timestamp()
+    )
 
 
 class Description(Base):
