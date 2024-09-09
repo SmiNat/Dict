@@ -1,0 +1,8 @@
+# ENV
+.env
+.venv
+/venv
+
+# DATABASE
+*.db
+*.log
