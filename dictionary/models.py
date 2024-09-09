@@ -38,15 +38,17 @@ class Word(Base):
     master_level = Column(Enum(MasterLevel), default=MasterLevel.NEW)
     notes = Column(StrippedString(250))
     created = Column(DateTime, default=func.current_timestamp())
-    updated = Column(DateTime, onupdate=func.current_timestamp())
+    updated = Column(
+        DateTime, onupdate=func.current_timestamp(), default=func.current_timestamp()
+    )
 
 
 class Description(Base):
     __tablename__ = "descriptions"
 
     id = Column(Integer, primary_key=True, unique=True, autoincrement=True)
+    word_id = Column(ForeignKey("words.id"), primary_key=True, nullable=False)
     type = Column(Enum(WordTypes))
-    word_id = Column(ForeignKey("words.id"), primary_key=True)
-    in_polish = Column(String(300), nullable=False)
-    in_english = Column(String(300))
-    example = Column(String(300))
+    in_polish = Column(StrippedString(300), nullable=False)
+    in_english = Column(StrippedString(300))
+    example = Column(StrippedString(300))

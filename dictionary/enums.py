@@ -1,7 +1,17 @@
 from enum import Enum
 
 
-class WordTypes(Enum):
+class WordTypes(str, Enum):
+    def __new__(cls, value, translation):
+        obj = str.__new__(cls, value)
+        obj._value_ = value
+        obj.translation = translation
+        return obj
+
+    @classmethod
+    def list_of_values(cls):
+        return list(map(lambda c: c.value, cls))
+
     NOUN = "noun", "rzeczownik"  # kto? co?
     VERB = (
         "verb",
@@ -38,7 +48,11 @@ class WordTypes(Enum):
     INTERJECTION = "interjection", "wykrzyknik"
 
 
-class MasterLevel(Enum):
+class MasterLevel(str, Enum):
+    @classmethod
+    def list_of_values(cls):
+        return list(map(lambda c: c.value, cls))
+
     NEW = "new"
     MEDIUM = "medium"
     PERFECT = "prefect"
