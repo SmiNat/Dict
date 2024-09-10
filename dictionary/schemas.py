@@ -1,5 +1,3 @@
-import datetime
-
 from pydantic import BaseModel, Field
 
 from .enums import MasterLevel, WordTypes
@@ -18,16 +16,25 @@ class DescriptionModel(BaseModel):
         from_attributes = True
 
 
-class DescriptionWithId(DescriptionModel):
+class DescriptionReturn(DescriptionModel):
     "Model for returning descriptions with its ID."
 
     id: int
+    # created: datetime.datetime
+    # updated: datetime.datetime
+
+    class Config:
+        from_attributes = True
 
 
-class DescriptionReturn(DescriptionWithId):
-    "Model for returning descriptions with its ID and the ID of the word."
+class AllDescriptions(BaseModel):
+    "Model for returning all descriptions stored in the database."
 
-    word_id: int
+    number_of_descriptions: int
+    descriptions: list[DescriptionReturn]
+
+    class Config:
+        from_attributes = True
 
 
 class WordModel(BaseModel):
@@ -46,11 +53,8 @@ class WordReturn(WordModel):
     "Model for returning words with its ID and timestamps."
 
     id: int
-    created: datetime.datetime
-    updated: datetime.datetime
-
-    class Config:
-        from_attributes = True
+    # created: datetime.datetime
+    # updated: datetime.datetime
 
 
 class AllWords(BaseModel):
@@ -63,15 +67,11 @@ class AllWords(BaseModel):
         from_attributes = True
 
 
-class WordDescriptions(BaseModel):
+class WordDescriptionsModel(BaseModel):
     "Model for returning word with its full descriptions."
 
     word: WordReturn
-    description: list[DescriptionWithId]
+    description: list[DescriptionReturn]
 
-
-class WordTranslations(BaseModel):
-    "Model for returning word with its polish translation."
-
-    word: str
-    translation: list
+    class Config:
+        from_attributes = True
