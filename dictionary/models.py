@@ -3,10 +3,12 @@ from sqlalchemy import (
     DateTime,
     Enum,
     ForeignKey,
+    Index,
     Integer,
     String,
     func,
 )
+from sqlalchemy.orm import relationship
 from sqlalchemy.types import TypeDecorator
 
 from .database import Base
@@ -31,7 +33,7 @@ class StrippedString(TypeDecorator):
 
 
 class Word(Base):
-    __tablename__ = "words"
+    __tablename__ = "word"
 
     id = Column(Integer, primary_key=True, unique=True, autoincrement=True)
     word = Column(StrippedString(150), unique=True, nullable=False)
@@ -42,13 +44,44 @@ class Word(Base):
         DateTime, onupdate=func.current_timestamp(), default=func.current_timestamp()
     )
 
+    # Relationship with WordDescription association table
+    descriptions = relationship(
+        "Description", secondary="word_description", back_populates="words"
+    )
+
 
 class Description(Base):
-    __tablename__ = "descriptions"
+    __tablename__ = "description"
 
     id = Column(Integer, primary_key=True, unique=True, autoincrement=True)
-    word_id = Column(ForeignKey("words.id"), primary_key=True, nullable=False)
     type = Column(Enum(WordTypes))
-    in_polish = Column(StrippedString(300), nullable=False)
+    in_polish = Column(StrippedString(300), nullable=False, unique=True)
     in_english = Column(StrippedString(300))
     example = Column(StrippedString(300))
+    created = Column(DateTime, default=func.current_timestamp())
+    updated = Column(
+        DateTime, onupdate=func.current_timestamp(), default=func.current_timestamp()
+    )
+
+    # Relationship with WordDescription association table
+    words = relationship(
+        "Word", secondary="word_description", back_populates="descriptions"
+    )
+
+
+class WordDescription(Base):
+    __tablename__ = "word_description"
+
+    id = Column(Integer, primary_key=True, unique=True, autoincrement=True)
+    word_id = Column(ForeignKey("word.id"), primary_key=True, nullable=False)
+    description_id = Column(
+        ForeignKey("description.id"), primary_key=True, nullable=False
+    )
+    created = Column(DateTime, default=func.current_timestamp())
+    updated = Column(
+        DateTime, onupdate=func.current_timestamp(), default=func.current_timestamp()
+    )
+
+    __table_args__ = (
+        Index("idx_unique_word_description", word_id, description_id, unique=True),
+    )
