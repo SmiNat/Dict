@@ -1,6 +1,6 @@
 import datetime
 import logging
-from typing import Annotated, NoReturn
+from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.exc import IntegrityError
@@ -19,12 +19,8 @@ from .schemas import (
     WordReturn,
     WordUpdate,
 )
+from .utils import integrity_error_handler
 
-logging.basicConfig(
-    level=logging.DEBUG,
-    format="\033[94m%(levelname)-9s %(name)s | %(filename)s | %(lineno)s\033[0m --- [%(message)s]",
-    handlers=[logging.FileHandler("debug.log"), logging.StreamHandler()],
-)
 logger = logging.getLogger(__name__)
 
 
@@ -32,14 +28,6 @@ router = APIRouter(prefix="/dict", tags=["dict"])
 
 
 db_dependency = Annotated[Session, Depends(get_db)]
-
-
-def integrity_error_handler(exc_info: IntegrityError) -> NoReturn:
-    logger.debug(
-        f"⚠️  Unique constraint violated. ERROR: {str(exc_info.orig).strip("\n").replace("\n", ". ")}"
-    )
-    message = str(exc_info.orig)[str(exc_info.orig).find("DETAIL:") + 8 :].strip()
-    raise HTTPException(400, f"Unique constraint violated. {message}")
 
 
 @router.get(
