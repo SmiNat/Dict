@@ -1,3 +1,4 @@
+import datetime
 import logging
 from typing import Annotated, NoReturn
 
@@ -12,9 +13,11 @@ from .schemas import (
     AllWords,
     DescriptionModel,
     DescriptionReturn,
+    DescriptionUpdate,
     WordDescriptionsModel,
     WordModel,
     WordReturn,
+    WordUpdate,
 )
 
 logging.basicConfig(
@@ -206,7 +209,7 @@ async def get_all_dict_data(db: db_dependency):
     return result
 
 
-@router.post("/new_word", response_model=WordReturn, status_code=201)
+@router.post("/word/add", response_model=WordReturn, status_code=201)
 async def add_a_new_word(db: db_dependency, new_word: WordModel):
     model = new_word.model_dump()
     word = Word(**model)
@@ -215,14 +218,14 @@ async def add_a_new_word(db: db_dependency, new_word: WordModel):
         db.add(word)
         db.commit()
 
-        return word
-
     except IntegrityError as exc:
         integrity_error_handler(exc)
 
+    return word
+
 
 @router.post(
-    "/new_description/{word_id}", response_model=WordDescriptionsModel, status_code=201
+    "/description/add/{word_id}", response_model=WordDescriptionsModel, status_code=201
 )
 async def add_a_new_description(
     db: db_dependency, word_id: int, new_desc: DescriptionModel
@@ -247,14 +250,14 @@ async def add_a_new_description(
             .all()
         )
 
-        return {"word": {"word": word.word, "id": word.id}, "description": desc}
-
     except IntegrityError as exc:
         integrity_error_handler(exc)
 
+    return {"word": {"word": word.word, "id": word.id}, "description": desc}
+
 
 @router.post(
-    "/assign_description/{word_id}/{desc_id}",
+    "/description/assign/{word_id}/{desc_id}",
     response_model=WordDescriptionsModel,
     status_code=201,
     description="Assign an existing description to the existing word.",
@@ -281,7 +284,95 @@ async def assign_description_to_a_word(db: db_dependency, word_id: int, desc_id:
             .all()
         )
 
-        return {"word": {"word": word.word, "id": word.id}, "description": desc}
+    except IntegrityError as exc:
+        integrity_error_handler(exc)
+
+    return {"word": {"word": word.word, "id": word.id}, "description": desc}
+
+
+@router.patch(
+    "/word/update/{word_id}",
+    status_code=200,
+    response_model=WordReturn,
+    response_model_exclude_none=True,
+    response_model_exclude_unset=True,
+    description="**NOTE**: Delete fields you don't wish to change them - leaving field \
+        with 'null' value will remove field content.",
+)
+async def update_word(db: db_dependency, word_id: int, update: WordUpdate):
+    word = db.query(Word).filter_by(id=word_id).first()
+    if not word:
+        raise HTTPException(404, f"Word with the ID: {word_id} was not found.")
+
+    fields_to_update = update.model_dump(exclude_unset=True)
+    for field, value in fields_to_update.items():
+        setattr(word, field, value)
+    word.updated = datetime.datetime.now()
+
+    try:
+        db.commit()
+        db.refresh(word)
 
     except IntegrityError as exc:
         integrity_error_handler(exc)
+
+    logger.debug("Word '%s' (id: %s) was successfully updated." % (word.word, word.id))
+
+    return word
+
+
+@router.patch(
+    "/description/update/{desc_id}",
+    status_code=200,
+    response_model=DescriptionReturn,
+    response_model_exclude_none=True,
+    response_model_exclude_unset=True,
+    description="**NOTE**: Delete fields you don't wish to change them - leaving field \
+        with 'null' value will remove field content.",
+)
+async def update_description(
+    db: db_dependency, desc_id: int, update: DescriptionUpdate
+):
+    description = db.query(Description).filter_by(id=desc_id).first()
+    if not description:
+        raise HTTPException(404, f"Description with the ID: {desc_id} was not found.")
+
+    fields_to_update = update.model_dump(exclude_unset=True)
+    for field, value in fields_to_update.items():
+        setattr(description, field, value)
+    description.updated = datetime.datetime.now()
+
+    try:
+        db.commit()
+        db.refresh(description)
+
+    except IntegrityError as exc:
+        integrity_error_handler(exc)
+
+    logger.debug("Description with id: %s was successfully updated." % (description.id))
+
+    return description
+
+
+@router.delete("/word/delete/{word_id}", status_code=204)
+async def delete_a_word(db: db_dependency, word_id: int):
+    word = db.query(Word).filter_by(id=word_id).first()
+    if not word:
+        raise HTTPException(404, f"Word with the ID: {word_id} was not found.")
+
+    db.delete(word)
+    db.commit()
+
+    logger.debug("Word '%s' (id: %s) was successfully deleted." % (word.word, word.id))
+
+
+@router.delete("/word/description/{desc_id}", status_code=204)
+async def delete_a_description(db: db_dependency, desc_id: int):
+    description = db.query(Description).filter_by(id=desc_id).first()
+    if not description:
+        raise HTTPException(404, f"Description with the ID: {desc_id} was not found.")
+
+    db.delete(description)
+    db.commit()
+
+    logger.debug("Description with id: %s was successfully deleted." % (description.id))
