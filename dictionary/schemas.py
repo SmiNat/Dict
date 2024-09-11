@@ -4,7 +4,7 @@ from .enums import MasterLevel, WordTypes
 
 
 class DescriptionModel(BaseModel):
-    "Model for adding and updating descriptions."
+    "Model for adding description to the database."
 
     type: WordTypes | None = Field(default=None, examples=[None])
     in_polish: str
@@ -17,7 +17,7 @@ class DescriptionModel(BaseModel):
 
 
 class DescriptionReturn(DescriptionModel):
-    "Model for returning descriptions with its ID."
+    "Model for returning description with its ID."
 
     id: int
     # created: datetime.datetime
@@ -25,6 +25,12 @@ class DescriptionReturn(DescriptionModel):
 
     class Config:
         from_attributes = True
+
+
+class DescriptionUpdate(DescriptionModel):
+    "Model for updating description in the database."
+
+    in_polish: str | None = Field(default=None, examples=[None])
 
 
 class AllDescriptions(BaseModel):
@@ -38,7 +44,7 @@ class AllDescriptions(BaseModel):
 
 
 class WordModel(BaseModel):
-    "Model for adding and updating words/sentences."
+    "Model for adding word/sentence to the database."
 
     word: str
     master_level: MasterLevel = MasterLevel.NEW
@@ -50,11 +56,18 @@ class WordModel(BaseModel):
 
 
 class WordReturn(WordModel):
-    "Model for returning words with its ID and timestamps."
+    "Model for returning word with its ID and timestamps."
 
     id: int
     # created: datetime.datetime
     # updated: datetime.datetime
+
+
+class WordUpdate(WordModel):
+    "Model for updating word/sentence in the database."
+
+    word: str | None = Field(default=None, examples=[None])
+    master_level: MasterLevel | None = Field(default=None, examples=[None])
 
 
 class AllWords(BaseModel):
