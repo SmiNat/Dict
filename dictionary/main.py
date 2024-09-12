@@ -1,10 +1,10 @@
 from fastapi import FastAPI
 
-from .database import engine
-from .logging_config import configure_logging
-from .models import Base
-from .routers.description import router as desc_router
-from .routers.word import router as word_router
+from dictionary.database import engine
+from dictionary.logging_config import configure_logging
+from dictionary.models import Base
+from dictionary.routers.description import router as desc_router
+from dictionary.routers.word import router as word_router
 
 configure_logging()
 

@@ -6,9 +6,9 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from ..database import get_db
-from ..models import Description, Word, WordDescription
-from ..schemas import (
+from dictionary.database import get_db
+from dictionary.models import Description, Word, WordDescription
+from dictionary.schemas import (
     AllWords,
     DescriptionReturn,
     WordDescriptionsModel,
@@ -16,7 +16,7 @@ from ..schemas import (
     WordReturn,
     WordUpdate,
 )
-from ..utils import integrity_error_handler
+from dictionary.utils import integrity_error_handler
 
 logger = logging.getLogger(__name__)
 

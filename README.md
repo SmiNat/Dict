@@ -11,3 +11,4 @@ App:
 - installed psycopg2-binary-2.9.9
 Dev (tests):
 5. pip install pytest
+- installed iniconfig-2.0.0 packaging-24.1 pluggy-1.5.0 pytest-8.3.3

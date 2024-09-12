@@ -1,6 +1,6 @@
 from pydantic import BaseModel, Field
 
-from .enums import MasterLevel, WordTypes
+from dictionary.enums import MasterLevel, WordTypes
 
 
 class DescriptionModel(BaseModel):

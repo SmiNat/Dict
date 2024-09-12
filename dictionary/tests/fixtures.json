@@ -1,0 +1,52 @@
+[
+    {
+        "word": {"word": "pivot", "master_level": "hard", "id": 1},
+        "description": [
+            {"type": "noun", "in_polish": "sedno", "id": 1},
+            {"type": "noun", "in_polish": "oś, trzpień, sworzeń", "id": 2},
+            {"type": "adjective", "in_polish": "główna postać", "id": 3},
+            {"type": "verb", "in_polish": "obracać się", "id": 4}
+        ]
+    },
+    {
+        "word": {"word": "pivot on sth", "master_level": "new", "id": 2},
+        "description": [{"type": "verb", "in_polish": "zależeć od czegoś", "id": 5}]
+    },
+    {
+        "word": {"word": "ellipsis", "master_level": "new", "id": 3},
+        "description": [
+            {
+                "type": "noun",
+                "in_polish": "wielokropek",
+                "example": "Ellipsis is made by using three dots.",
+                "id": 6
+            }
+        ]
+    },
+    {
+        "word": {"word": "eclipsis", "master_level": "new", "id": 4},
+        "description": [
+            {
+                "type": "noun",
+                "in_polish": "wielokropek",
+                "example": "Ellipsis is made by using three dots.",
+                "id": 6
+            }
+        ]
+    },
+    {
+        "word": {
+            "word": "ambiguous",
+            "master_level": "new",
+            "id": 5
+        },
+        "description": [
+            {
+                "type": "adjective",
+                "in_polish": "dwuznaczny, niejednoznaczny; niejasny, zagadkowy, mętny",
+                "example": "My question was ambiguous, but he knew what I meant.",
+                "id": 7
+            }
+        ]
+    }
+]
