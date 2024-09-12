@@ -11,8 +11,8 @@ from sqlalchemy import (
 from sqlalchemy.orm import relationship
 from sqlalchemy.types import TypeDecorator
 
-from .database import Base
-from .enums import MasterLevel, WordTypes
+from dictionary.database import Base
+from dictionary.enums import MasterLevel, WordTypes
 
 
 # Creating database tables

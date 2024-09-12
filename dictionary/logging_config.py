@@ -2,7 +2,7 @@ import logging
 import os
 from logging.config import dictConfig
 
-from .config import DevConfig, TestConfig, config
+from dictionary.config import DevConfig, TestConfig, config
 
 
 class ColoredFormatter(logging.Formatter):
