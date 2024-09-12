@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from dictionary.enums import MasterLevel, WordTypes
 
@@ -11,9 +11,7 @@ class DescriptionModel(BaseModel):
     in_english: str | None = Field(default=None, examples=[None])
     example: str | None = Field(default=None, examples=[None])
 
-    class Config:
-        use_enum_values = True
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True, use_enum_values=True)
 
 
 class DescriptionReturn(DescriptionModel):
@@ -23,8 +21,7 @@ class DescriptionReturn(DescriptionModel):
     # created: datetime.datetime
     # updated: datetime.datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class DescriptionUpdate(DescriptionModel):
@@ -39,8 +36,7 @@ class AllDescriptions(BaseModel):
     number_of_descriptions: int
     descriptions: list[DescriptionReturn]
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class WordModel(BaseModel):
@@ -50,9 +46,7 @@ class WordModel(BaseModel):
     master_level: MasterLevel = MasterLevel.NEW
     notes: str | None = Field(default=None, examples=[None])
 
-    class Config:
-        use_enum_values = True
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True, use_enum_values=True)
 
 
 class WordReturn(WordModel):
@@ -76,8 +70,7 @@ class AllWords(BaseModel):
     number_of_words: int
     words: list[WordReturn]
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class WordDescriptionsModel(BaseModel):
@@ -86,5 +79,4 @@ class WordDescriptionsModel(BaseModel):
     word: WordReturn
     description: list[DescriptionReturn]
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
