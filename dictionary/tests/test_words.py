@@ -1,3 +1,6 @@
+import pytest
+from fastapi import status
+from httpx import AsyncClient
 from sqlalchemy.orm import Session
 
 from dictionary.enums import MasterLevel
@@ -17,9 +20,17 @@ def create_word(
     return new_word
 
 
-def test_create_word(db_session):
-    # Use db_session provided by the fixture
+def test_create_word(db_session: Session):
     word = create_word(db_session, word="pivot on sth", master_level=MasterLevel.NEW)
 
     assert word.word == "pivot on sth"
     assert word.master_level == MasterLevel.NEW
+
+
+@pytest.mark.asyncio
+async def test_get_all_words_empty(async_client: AsyncClient, db_session: Session):
+    expected_response = {"number_of_words": 0, "words": []}
+    response = await async_client.get("/words/all")
+
+    assert response.status_code == status.HTTP_200_OK
+    assert response.json() == expected_response

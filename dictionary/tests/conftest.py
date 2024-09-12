@@ -36,11 +36,14 @@ def db_session():
         db.close()
 
 
+# app.dependency_overrides[get_db] = db_session
+
+
 # Creating test clients
 @pytest.fixture
-def client() -> Generator:
+def client(db_session) -> Generator:
     """Yield TestClient() on tested app."""
-    app.dependency_overrides[get_db] = db_session
+    app.dependency_overrides[get_db] = lambda: db_session
     yield TestClient(app)
 
 
@@ -48,6 +51,27 @@ def client() -> Generator:
 async def async_client(client) -> AsyncGenerator:
     """Uses async client from httpx instead of test client from fastapi for async tests."""
     async with AsyncClient(
-        transport=ASGITransport(app=app), base_url=client.base_url
+        transport=ASGITransport(app=app),
+        base_url=client.base_url,
     ) as ac:
         yield ac
+
+
+# # Overriding fixture pytest.mark.anyio to test async functions
+# @pytest.fixture(scope="session")
+# def anyio_backend():
+#     """
+#     Overrides anyio.pytest_plugin fixture to return asyncio
+#     as a designated library for async fixtures.
+#     """
+#     return "asyncio"
+
+
+# @pytest.fixture(scope="function")
+# def event_loop():
+#     """Create an event loop for the tests."""
+#     import asyncio
+
+#     loop = asyncio.get_event_loop_policy().new_event_loop()
+#     yield loop
+#     loop.close()
