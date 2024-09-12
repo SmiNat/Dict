@@ -1,4 +1,9 @@
-"""Note: a postgresql database for tests must be created first (empty database)."""
+"""
+NOTE: A postgresql database for tests must be created first (empty database).
+
+NOTE: In case of test failures, try to run tests using the commend: \
+pytest --asyncio-mode=auto
+"""
 
 import os
 from typing import AsyncGenerator, Generator

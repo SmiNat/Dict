@@ -11,10 +11,6 @@ from dictionary.models import Word
 logger = logging.getLogger(__name__)
 
 
-"""⚠️ NOTE: In case of test failures, try to run tests using the commend: \
-pytest --asyncio-mode=auto"""
-
-
 def create_word(
     db: Session,
     word: str = "pivot",
