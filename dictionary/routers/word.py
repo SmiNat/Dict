@@ -38,9 +38,6 @@ db_dependency = Annotated[Session, Depends(get_db)]
 async def get_all_words(db: db_dependency):
     query = db.query(Word)
 
-    if not query:
-        raise HTTPException(404, "No words stored in the database.")
-
     return {"number_of_words": query.count(), "words": query.all()}
 
 
@@ -72,7 +69,7 @@ async def get_word_translations(
             .all()
         )
         if not translations:
-            raise HTTPException(404, "No descriptions stored in the database.")
+            raise HTTPException(404, "No translations stored in the database.")
 
         translation_list = [translation[0] for translation in translations]
 
@@ -148,7 +145,7 @@ async def get_single_word(db: db_dependency, word_id: int):
 
     if not word:
         raise HTTPException(
-            404, f"No word with the ID {word_id} is stored in the database."
+            404, f"No word with the ID {word_id} stored in the database."
         )
 
     desc = (
