@@ -4,9 +4,11 @@ import pytest
 from fastapi import status
 from fastapi.encoders import jsonable_encoder
 from httpx import AsyncClient
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from dictionary.enums import MasterLevel
+from dictionary.models import Word
 from dictionary.tests.utils import (
     create_description,
     create_word,
@@ -488,3 +490,165 @@ async def test_get_single_word_with_with_multiple_descriptions(
     response = await async_client.get(f"/words/single/{word.id}")
     assert response.status_code == 200
     assert response.json() == expected_response
+
+
+@pytest.mark.anyio
+async def test_add_new_word_successfull(async_client: AsyncClient, db_session: Session):
+    payload = {"word": "test", "master_level": MasterLevel.NEW, "notes": "example"}
+    word = db_session.query(Word).filter_by(word=payload["word"]).first()
+    assert word is None
+
+    response = await async_client.post("/words/add", json=payload)
+    word = db_session.query(Word).filter_by(word=payload["word"]).first()
+    expected_response = jsonable_encoder(
+        word, exclude_none=True, exclude=["created", "updated"]
+    )
+
+    assert response.status_code == 201
+    assert response.json() == expected_response
+
+
+@pytest.mark.anyio
+async def test_add_new_word_intgrity_error_while_adding_the_same_word(
+    async_client: AsyncClient, db_session: Session
+):
+    word = create_word(word="test")
+    word = db_session.query(Word).filter_by(word=word.word).first()
+    assert word is not None
+
+    payload = {"word": word.word, "master_level": MasterLevel.HARD, "notes": "example"}
+
+    try:
+        response = await async_client.post("/words/add", json=payload)
+    except IntegrityError as exc_info:
+        db_session.rollback()  # Rollback the session to reset its state
+        expected_message = (
+            'duplicate key value violates unique constraint "word_word_key"'
+        )
+        assert expected_message in str(exc_info.orig)
+        added_word = db_session.query(Word).filter_by(word=payload["word"]).first()
+        assert added_word is None
+
+    expected_response = "Unique constraint violated. Key (word)=(test) already exists."
+    assert response.status_code == 400
+    assert response.json()["detail"] == expected_response
+
+
+@pytest.mark.anyio
+async def test_add_new_word_invalid_enum_parameter(
+    async_client: AsyncClient, db_session: Session
+):
+    payload = {"word": "test", "master_level": "invalid", "notes": "example"}
+    expected_response = "Input should be 'new', 'medium', 'prefect' or 'hard'"
+
+    response = await async_client.post("/words/add", json=payload)
+
+    assert response.status_code == 422
+    assert expected_response in response.json()["detail"][0]["msg"]
+    added_word = db_session.query(Word).filter_by(word=payload["word"]).first()
+    assert added_word is None
+
+
+@pytest.mark.anyio
+async def test_update_a_word_with_word_not_found(
+    async_client: AsyncClient, db_session: Session
+):
+    word_id = 1
+    payload = {"word": "test", "master_level": MasterLevel.NEW, "notes": "example"}
+    expected_response = f"Word with ID: {word_id} was not found."
+
+    response = await async_client.patch(f"/words/update/{word_id}", json=payload)
+    assert response.status_code == 404
+    assert response.json()["detail"] == expected_response
+
+
+@pytest.mark.anyio
+async def test_update_a_word_successfully(
+    async_client: AsyncClient, db_session: Session
+):
+    word = create_word()
+    word = db_session.query(Word).filter_by(word=word.word).first()
+    assert word is not None
+    assert word.created == word.updated
+
+    payload = {"word": "test", "master_level": MasterLevel.NEW, "notes": "example"}
+
+    response = await async_client.patch(f"/words/update/{word.id}", json=payload)
+    word_updated = db_session.query(Word).filter_by(word=payload["word"]).first()
+    assert word_updated is not None
+    assert word.id == word_updated.id
+    assert response.status_code == 200
+    assert response.json() == jsonable_encoder(
+        word_updated, exclude_none=True, exclude=["created", "updated"]
+    )
+    assert word_updated.created == word.created
+    assert word_updated.created != word_updated.updated
+
+
+@pytest.mark.anyio
+async def test_update_a_word_integrity_error(
+    async_client: AsyncClient, db_session: Session
+):
+    word = create_word()
+    word_2 = create_word(word="test")
+
+    payload = {"word": "test", "master_level": MasterLevel.NEW, "notes": "example"}
+
+    try:
+        response = await async_client.patch(f"/words/update/{word.id}", json=payload)
+    except IntegrityError as exc_info:
+        db_session.rollback()  # Rollback the session to reset its state
+        expected_message = (
+            'duplicate key value violates unique constraint "word_word_key"'
+        )
+        assert expected_message in str(exc_info.orig)
+        updated_word = db_session.query(Word).filter_by(id=word.id).first()
+        assert updated_word.word == word.word
+
+    expected_response = "Unique constraint violated. Key (word)=(test) already exists."
+    assert response.status_code == 400
+    assert response.json()["detail"] == expected_response
+
+
+@pytest.mark.anyio
+async def test_update_a_word_invalid_enum_parameter(
+    async_client: AsyncClient, db_session: Session
+):
+    word = create_word()
+    payload = {"master_level": "invalid"}
+    expected_response = "Input should be 'new', 'medium', 'prefect' or 'hard'"
+
+    response = await async_client.patch(f"/words/update/{word.id}", json=payload)
+
+    assert response.status_code == 422
+    assert expected_response in response.json()["detail"][0]["msg"]
+    word_updated = db_session.query(Word).filter_by(id=word.id).first()
+    assert word_updated.master_level != "invalid"
+    assert word_updated.master_level == "new"
+
+
+@pytest.mark.anyio
+async def test_delete_a_word_successfully(
+    async_client: AsyncClient, db_session: Session
+):
+    word = create_word()
+    word = db_session.query(Word).filter_by(word=word.word).first()
+    assert word is not None
+
+    response = await async_client.delete(f"/words/delete/{word.id}")
+
+    assert response.status_code == 204
+    word = db_session.query(Word).filter_by(word=word.word).first()
+    assert word is None
+
+
+@pytest.mark.anyio
+async def test_delete_a_word_invalid_word_id(
+    async_client: AsyncClient, db_session: Session
+):
+    word_id = 1
+    expected_response = f"Word with the ID: {word_id} was not found."
+
+    response = await async_client.delete(f"/words/delete/{word_id}")
+    assert response.status_code == 404
+    assert response.json()["detail"] == expected_response

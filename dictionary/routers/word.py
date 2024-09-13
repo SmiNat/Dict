@@ -186,9 +186,9 @@ async def add_a_new_word(db: db_dependency, new_word: WordModel):
 )
 async def update_word(db: db_dependency, word_id: int, update: WordUpdate):
     word = db.query(Word).filter_by(id=word_id).first()
-    sentence = word.word
     if not word:
-        raise HTTPException(404, f"Word with the ID: {word_id} was not found.")
+        raise HTTPException(404, f"Word with ID: {word_id} was not found.")
+    sentence = word.word
 
     fields_to_update = update.model_dump(exclude_unset=True)
     for field, value in fields_to_update.items():
