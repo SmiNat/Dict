@@ -27,7 +27,7 @@ TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engin
 
 
 # Overriding database connection for all of the endpoins
-@pytest.fixture
+@pytest.fixture(scope="function")
 def db_session():
     """Sets a clean db session for each test."""
 
@@ -39,6 +39,19 @@ def db_session():
         yield db
     finally:
         db.close()
+
+
+# # Cleaning db tables after each test
+# @pytest.fixture(autouse=True, scope="function")
+# def clean_db():
+#     """Cleans db session for each test."""
+#     Base.metadata.drop_all(bind=engine)
+#     with TestingSessionLocal() as db:
+#         db.execute(text("DROP TABLE IF EXISTS word_description;"))
+#         db.execute(text("DROP TABLE IF EXISTS word;"))
+#         db.execute(text("DROP TABLE IF EXISTS description;"))
+#         db.execute(text("DROP TABLE IF EXISTS test_table;"))
+#         db.commit()
 
 
 # Creating test clients
