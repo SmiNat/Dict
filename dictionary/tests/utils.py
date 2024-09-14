@@ -62,3 +62,36 @@ def create_word_definition_association_table(
         return word_desc
     finally:
         db.close()
+
+
+def create_full_dict_entry(
+    word: str = "pivot",
+    master_level: str = MasterLevel.NEW,
+    notes: str = None,
+    type: str = WordTypes.NOUN,
+    in_polish: str = "sedno",
+    in_english: str | None = None,
+    example: str | None = None,
+    word_id: int | None = None,
+    description_id: int | None = None,
+):
+    if not word_id and not description_id:
+        word = create_word(word, master_level, notes)
+        desc = create_description(type, in_polish, in_english, example)
+        create_word_definition_association_table(word.id, desc.id)
+
+        return word, desc
+
+    if word_id and not description_id:
+        desc = create_description(type, in_polish, in_english, example)
+        create_word_definition_association_table(word_id, desc.id)
+
+        return desc
+
+    if not word_id and description_id:
+        word = create_word(word, master_level, notes)
+        create_word_definition_association_table(word.id, description_id)
+
+        return word
+
+    create_word_definition_association_table(word_id, description_id)

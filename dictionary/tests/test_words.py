@@ -11,6 +11,7 @@ from dictionary.enums import MasterLevel
 from dictionary.models import Word
 from dictionary.tests.utils import (
     create_description,
+    create_full_dict_entry,
     create_word,
     create_word_definition_association_table,
 )
@@ -155,10 +156,8 @@ async def test_get_word_translation_word_id_with_single_translation(
 async def test_get_word_translation_word_id_with_multiple_translations(
     async_client: AsyncClient, db_session: Session
 ):
-    word = create_word()
-    desc_1 = create_description()
+    word, desc_1 = create_full_dict_entry()
     desc_2 = create_description(in_polish="test")
-    create_word_definition_association_table(word.id, desc_1.id)
     create_word_definition_association_table(word.id, desc_2.id)
     expected_response = {
         "word": word.word,
@@ -192,9 +191,7 @@ async def test_get_word_translation_search_single_word_with_no_translations(
 async def test_get_word_translation_search_single_word_with_single_translation(
     async_client: AsyncClient, db_session: Session
 ):
-    word = create_word()
-    desc = create_description()
-    create_word_definition_association_table(word.id, desc.id)
+    word, desc = create_full_dict_entry()
     expected_response = [
         {"word": {"word": word.word, "id": word.id}, "translation": [desc.in_polish]}
     ]
@@ -210,20 +207,19 @@ async def test_get_word_translation_search_single_word_with_single_translation(
 async def test_get_word_translation_search_single_word_with_multiple_translations(
     async_client: AsyncClient, db_session: Session
 ):
-    word = create_word()
-    desc_1 = create_description()
-    desc_2 = create_description(in_polish="test", example="example")
-    create_word_definition_association_table(word.id, desc_1.id)
-    create_word_definition_association_table(word.id, desc_2.id)
+    word_1, desc_1 = create_full_dict_entry()
+    desc_2 = create_full_dict_entry(
+        word_id=word_1.id, in_polish="test", example="example"
+    )  # word_1, desc_2
     expected_response = [
         {
-            "word": {"word": word.word, "id": word.id},
+            "word": {"word": word_1.word, "id": word_1.id},
             "translation": [desc_1.in_polish, desc_2.in_polish],
         }
     ]
 
     response = await async_client.get(
-        "/words/translations", params={"search": word.word}
+        "/words/translations", params={"search": word_1.word}
     )
     assert response.status_code == 200
     assert response.json() == expected_response
@@ -251,24 +247,24 @@ async def test_get_word_translation_search_multiple_words_with_no_translations(
 async def test_get_word_translation_search_multiple_words_with_translations(
     async_client: AsyncClient, db_session: Session
 ):
-    word = create_word(word="pivot")
-    word_2 = create_word(word="pivot on sth")
+    word_1, desc_1 = create_full_dict_entry(word="pivot")  # word_1, desc_1
+    desc_2 = create_full_dict_entry(
+        word_id=word_1.id, in_polish="oś, trzpień"
+    )  # word_1, desc_2
+    word_2, desc_3 = create_full_dict_entry(
+        word="pivot on sth", in_polish="zależeć od czegoś", type="verb"
+    )  # word_2, desc_3
     word_3 = create_word(word="pivot man")
     word_4 = create_word(word="test")
-    desc = create_description()
-    desc_2 = create_description(in_polish="oś, trzpień")
-    desc_22 = create_description(in_polish="zależeć od czegoś", type="verb")
-    create_word_definition_association_table(word.id, desc.id)
-    create_word_definition_association_table(word.id, desc_2.id)
-    create_word_definition_association_table(word_2.id, desc_22.id)
+
     expected_response = [
         {
-            "word": {"word": word.word, "id": word.id},
-            "translation": [desc.in_polish, desc_2.in_polish],
+            "word": {"word": word_1.word, "id": word_1.id},
+            "translation": [desc_1.in_polish, desc_2.in_polish],
         },
         {
             "word": {"word": word_2.word, "id": word_2.id},
-            "translation": [desc_22.in_polish],
+            "translation": [desc_3.in_polish],
         },
         {
             "word": {"word": word_3.word, "id": word_3.id},
@@ -277,7 +273,7 @@ async def test_get_word_translation_search_multiple_words_with_translations(
     ]
 
     response = await async_client.get(
-        "/words/translations", params={"search": word.word}
+        "/words/translations", params={"search": word_1.word}
     )
     assert response.status_code == 200
     assert response.json() == expected_response
@@ -317,9 +313,7 @@ async def test_get_all_dict_data_single_word_no_description(
 async def test_get_all_dict_data_single_word_single_description(
     async_client: AsyncClient, db_session: Session
 ):
-    word = create_word()
-    desc = create_description()
-    create_word_definition_association_table(word.id, desc.id)
+    word, desc = create_full_dict_entry()
     expected_response = [
         {
             "word": jsonable_encoder(
@@ -342,15 +336,14 @@ async def test_get_all_dict_data_single_word_single_description(
 async def test_get_all_dict_data_single_word_multiple_descriptions(
     async_client: AsyncClient, db_session: Session
 ):
-    word = create_word()
-    desc_1 = create_description()
-    desc_2 = create_description(in_polish="oś, trzpień", example="test")
-    create_word_definition_association_table(word.id, desc_1.id)
-    create_word_definition_association_table(word.id, desc_2.id)
+    word_1, desc_1 = create_full_dict_entry()
+    desc_2 = create_full_dict_entry(
+        word_id=word_1.id, in_polish="oś, trzpień", example="test"
+    )  # word_1, desc_2
     expected_response = [
         {
             "word": jsonable_encoder(
-                word, exclude=["created", "updated"], exclude_none=True
+                word_1, exclude=["created", "updated"], exclude_none=True
             ),
             "description": [
                 jsonable_encoder(
@@ -372,17 +365,13 @@ async def test_get_all_dict_data_single_word_multiple_descriptions(
 async def test_get_all_dict_data_multiple_words_multiple_descriptions(
     async_client: AsyncClient, db_session: Session
 ):
-    word_1 = create_word()
-    word_2 = create_word(word="riot")
-    desc_1 = create_description()
-    desc_2 = create_description(in_polish="oś, trzpień", example="test")
-    desc_3 = create_description(in_polish="zamieszki")
-    desc_4 = create_description(in_polish="test")  # associated with both words
-    create_word_definition_association_table(word_1.id, desc_1.id)
-    create_word_definition_association_table(word_1.id, desc_2.id)
-    create_word_definition_association_table(word_1.id, desc_4.id)
+    word_1, desc_1 = create_full_dict_entry()
+    desc_2 = create_full_dict_entry(
+        word_id=word_1.id, in_polish="oś, trzpień", example="test"
+    )
+    desc_3 = create_full_dict_entry(word_id=word_1.id, in_polish="test")
+    word_2, desc_4 = create_full_dict_entry(word="riot", in_polish="zamieszki")
     create_word_definition_association_table(word_2.id, desc_3.id)
-    create_word_definition_association_table(word_2.id, desc_4.id)
     expected_response = [
         {
             "word": jsonable_encoder(
@@ -396,7 +385,7 @@ async def test_get_all_dict_data_multiple_words_multiple_descriptions(
                     desc_2, exclude_none=True, exclude=["created", "updated"]
                 ),
                 jsonable_encoder(
-                    desc_4, exclude_none=True, exclude=["created", "updated"]
+                    desc_3, exclude_none=True, exclude=["created", "updated"]
                 ),
             ],
         },
@@ -451,9 +440,7 @@ async def test_get_single_word_with_no_description(
 async def test_get_single_word_with_with_single_description(
     async_client: AsyncClient, db_session: Session
 ):
-    word = create_word(notes="test")
-    desc = create_description()
-    create_word_definition_association_table(word.id, desc.id)
+    word, desc = create_full_dict_entry(notes="test")
     expected_response = {
         "word": jsonable_encoder(
             word, exclude=["created", "updated"], exclude_none=True
@@ -472,11 +459,10 @@ async def test_get_single_word_with_with_single_description(
 async def test_get_single_word_with_with_multiple_descriptions(
     async_client: AsyncClient, db_session: Session
 ):
-    word = create_word(notes="test")
-    desc_1 = create_description()
-    desc_2 = create_description(in_polish="oś, dźwignia", example="test")
-    create_word_definition_association_table(word.id, desc_1.id)
-    create_word_definition_association_table(word.id, desc_2.id)
+    word, desc_1 = create_full_dict_entry(notes="test")
+    desc_2 = create_full_dict_entry(
+        word_id=word.id, in_polish="oś, dźwignia", example="test"
+    )
     expected_response = {
         "word": jsonable_encoder(
             word, exclude=["created", "updated"], exclude_none=True
