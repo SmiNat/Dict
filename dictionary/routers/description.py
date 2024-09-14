@@ -37,7 +37,7 @@ db_dependency = Annotated[Session, Depends(get_db)]
 async def get_all_descriptions(db: db_dependency):
     query = db.query(Description)
 
-    if not query:
+    if not query.all():
         raise HTTPException(404, "No descriptions stored in the database.")
 
     return {"number_of_descriptions": query.count(), "descriptions": query.all()}
@@ -88,9 +88,9 @@ async def add_a_new_description(
     except IntegrityError as exc:
         integrity_error_handler(exc)
 
-    logger.debug("Description with id: %s was successfully created." % (description.id))
+    logger.debug("Description with ID: %s was successfully created." % (description.id))
 
-    return {"word": {"word": word.word, "id": word.id}, "description": desc}
+    return {"word": word, "description": desc}
 
 
 @router.post(
@@ -102,11 +102,11 @@ async def add_a_new_description(
 async def assign_description_to_a_word(db: db_dependency, word_id: int, desc_id: int):
     word = db.query(Word).filter_by(id=word_id).first()
     if not word:
-        raise HTTPException(404, f"Word with the ID of {word_id} was not found.")
+        raise HTTPException(404, f"Word with ID: {word_id} was not found.")
 
     description = db.query(Description).filter_by(id=desc_id).first()
     if not description:
-        raise HTTPException(404, f"Description with the ID of {desc_id} was not found.")
+        raise HTTPException(404, f"Description with ID: {desc_id} was not found.")
 
     association_table = WordDescription(word_id=word_id, description_id=desc_id)
 
@@ -125,11 +125,11 @@ async def assign_description_to_a_word(db: db_dependency, word_id: int, desc_id:
         integrity_error_handler(exc)
 
     logger.debug(
-        "Description with id: %s was successfully assigned to a word (id: %s)."
+        "Description with ID: %s was successfully assigned to a word (id: %s)."
         % (description.id, word.id)
     )
 
-    return {"word": {"word": word.word, "id": word.id}, "description": desc}
+    return {"word": word, "description": desc}
 
 
 @router.patch(
@@ -146,7 +146,7 @@ async def update_description(
 ):
     description = db.query(Description).filter_by(id=desc_id).first()
     if not description:
-        raise HTTPException(404, f"Description with the ID: {desc_id} was not found.")
+        raise HTTPException(404, f"Description with ID: {desc_id} was not found.")
 
     fields_to_update = update.model_dump(exclude_unset=True)
     for field, value in fields_to_update.items():
@@ -160,7 +160,7 @@ async def update_description(
     except IntegrityError as exc:
         integrity_error_handler(exc)
 
-    logger.debug("Description with id: %s was successfully updated." % (description.id))
+    logger.debug("Description with ID: %s was successfully updated." % (description.id))
 
     return description
 
@@ -174,4 +174,4 @@ async def delete_a_description(db: db_dependency, desc_id: int):
     db.delete(description)
     db.commit()
 
-    logger.debug("Description with id: %s was successfully deleted." % (description.id))
+    logger.debug("Description with ID: %s was successfully deleted." % (description.id))

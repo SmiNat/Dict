@@ -27,7 +27,7 @@ def test_create_word(db_session: Session):
 
 
 @pytest.mark.anyio
-async def test_get_all_words_empty(async_client: AsyncClient, db_session: Session):
+async def test_get_all_words_empty_db(async_client: AsyncClient, db_session: Session):
     expected_response = {"number_of_words": 0, "words": []}
     response = await async_client.get("/words/all")
 
