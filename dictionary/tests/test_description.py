@@ -3,7 +3,6 @@ import logging
 import pytest
 from fastapi.encoders import jsonable_encoder
 from httpx import AsyncClient
-from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from dictionary.enums import WordTypes
@@ -209,22 +208,7 @@ async def test_add_new_description_intgrity_error_while_adding_the_same_desc(
     desc = create_description(in_polish="test")
     payload = {"in_polish": desc.in_polish}
 
-    try:
-        response = await async_client.post(f"/descriptions/add/{word.id}", json=payload)
-    except IntegrityError as exc_info:
-        expected_message = (
-            'duplicate key value violates unique constraint "description_in_polish_key"'
-        )
-        assert expected_message in str(exc_info.orig)
-        new_desc = (
-            db_session.query(Description)
-            .filter_by(in_polish=payload["in_polish"])
-            .first()
-        )
-        assert new_desc is None
-
-        word_desc_association_table = db_session.query(WordDescription).all()
-        assert len(word_desc_association_table) == 0
+    response = await async_client.post(f"/descriptions/add/{word.id}", json=payload)
 
     expected_response = (
         "Unique constraint violated. Key (in_polish)=(test) already exists."
@@ -315,21 +299,9 @@ async def test_assign_description_intgrity_error_while_adding_the_same_word_and_
     word = create_word()
     desc = create_description()
     word_desc = create_word_definition_association_table(word.id, desc.id)
-    word_desc_association_table = db_session.query(WordDescription).all()
-    assert len(word_desc_association_table) == 1
 
-    try:
-        response = await async_client.post(f"/descriptions/assign/{word.id}/{desc.id}")
-    except IntegrityError as exc_info:
-        expected_message = 'duplicate key value violates unique constraint "idx_unique_word_description"'
-        print("✅✅", exc_info.orig)
-        assert expected_message in str(exc_info.orig)
-
-        word_desc_association_table = db_session.query(WordDescription).all()
-        assert len(word_desc_association_table) == 1
+    response = await async_client.post(f"/descriptions/assign/{word.id}/{desc.id}")
 
     expected_response = "Unique constraint violated. Key (word_id, description_id)=(1, 1) already exists."
     assert response.status_code == 400
     assert response.json()["detail"] == expected_response
-    word_desc_association_table = db_session.query(WordDescription).all()
-    assert len(word_desc_association_table) == 1

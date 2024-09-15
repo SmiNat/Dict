@@ -4,7 +4,6 @@ import pytest
 from fastapi import status
 from fastapi.encoders import jsonable_encoder
 from httpx import AsyncClient
-from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from dictionary.enums import MasterLevel
@@ -504,16 +503,7 @@ async def test_add_new_word_intgrity_error_while_adding_the_same_word(
 
     payload = {"word": word.word, "master_level": MasterLevel.HARD, "notes": "example"}
 
-    try:
-        response = await async_client.post("/words/add", json=payload)
-    except IntegrityError as exc_info:
-        db_session.rollback()  # Rollback the session to reset its state
-        expected_message = (
-            'duplicate key value violates unique constraint "word_word_key"'
-        )
-        assert expected_message in str(exc_info.orig)
-        added_word = db_session.query(Word).filter_by(word=payload["word"]).first()
-        assert added_word is None
+    response = await async_client.post("/words/add", json=payload)
 
     expected_response = "Unique constraint violated. Key (word)=(test) already exists."
     assert response.status_code == 400
@@ -580,16 +570,7 @@ async def test_update_a_word_integrity_error(
 
     payload = {"word": "test", "master_level": MasterLevel.NEW, "notes": "example"}
 
-    try:
-        response = await async_client.patch(f"/words/update/{word.id}", json=payload)
-    except IntegrityError as exc_info:
-        db_session.rollback()  # Rollback the session to reset its state
-        expected_message = (
-            'duplicate key value violates unique constraint "word_word_key"'
-        )
-        assert expected_message in str(exc_info.orig)
-        updated_word = db_session.query(Word).filter_by(id=word.id).first()
-        assert updated_word.word == word.word
+    response = await async_client.patch(f"/words/update/{word.id}", json=payload)
 
     expected_response = "Unique constraint violated. Key (word)=(test) already exists."
     assert response.status_code == 400
