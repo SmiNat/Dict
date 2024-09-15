@@ -80,7 +80,7 @@ def configure_logging() -> None:
                 "file": {
                     "class": "logging.Formatter",
                     "datefmt": "%Y-%m-%dT%H:%M:%S",
-                    "format": "%(asctime)s %(msecs)03d %(levelname)s %(name)s %(filename)s %(lineno)s \033[93m>>>\033[0m [%(message)s]",
+                    "format": "%(asctime)s %(msecs)03d %(levelname)s %(name)s %(filename)s %(lineno)s >>> [%(message)s]",
                 },
                 "test": {
                     "class": "logging.Formatter",
