@@ -299,9 +299,130 @@ async def test_assign_description_intgrity_error_while_adding_the_same_word_and_
     word = create_word()
     desc = create_description()
     word_desc = create_word_definition_association_table(word.id, desc.id)
+    expected_response = "Unique constraint violated. Key (word_id, description_id)=(1, 1) already exists."
 
     response = await async_client.post(f"/descriptions/assign/{word.id}/{desc.id}")
 
-    expected_response = "Unique constraint violated. Key (word_id, description_id)=(1, 1) already exists."
     assert response.status_code == 400
+    assert response.json()["detail"] == expected_response
+
+
+@pytest.mark.anyio
+async def test_update_description_successfull(
+    async_client: AsyncClient, db_session: Session
+):
+    desc = create_description()
+    payload = {
+        "type": WordTypes.ADJECTIVE,
+        "in_polish": "nowy opis",
+        "in_english": "new desc",
+        "example": "new example",
+    }
+
+    response = await async_client.patch(f"/descriptions/update/{desc.id}", json=payload)
+
+    assert response.status_code == 200
+    new_desc = db_session.query(Description).filter_by(id=desc.id).first()
+    expected_response = jsonable_encoder(
+        new_desc, exclude_none=True, exclude_unset=True, exclude=["created", "updated"]
+    )
+    assert response.json() == expected_response
+    assert desc.created == new_desc.created
+    assert desc.updated != new_desc.updated
+
+
+@pytest.mark.parametrize(
+    "key, invalid_value, code, exp_response",
+    [
+        ("type", "invalid", 422, "Input should be 'noun', 'verb'"),
+        ("in_english", 123, 422, "Input should be a valid string"),
+        ("example", {"invalid": "invalid"}, 422, "Input should be a valid string"),
+    ],
+)
+@pytest.mark.anyio
+async def test_update_description_invalid_payload(
+    async_client: AsyncClient,
+    db_session: Session,
+    key: str,
+    invalid_value: str | None,
+    code: int,
+    exp_response: str,
+):
+    desc = create_description()
+    payload = {
+        "type": WordTypes.ADJECTIVE,
+        "in_polish": "nowy opis",
+        "in_english": "new desc",
+        "example": "new example",
+    }
+    payload[key] = invalid_value
+
+    response = await async_client.patch(f"/descriptions/update/{desc.id}", json=payload)
+
+    assert response.status_code == code
+    assert exp_response in response.json()["detail"][0]["msg"]
+
+
+@pytest.mark.anyio
+async def test_update_description_invalid_description_id(
+    async_client: AsyncClient, db_session: Session
+):
+    desc = create_description()
+    payload = {
+        "type": WordTypes.ADJECTIVE,
+        "in_polish": "nowy opis",
+        "in_english": "new desc",
+        "example": "new example",
+    }
+    desc_id = 111
+    expected_response = f"Description with ID: {desc_id} was not found."
+
+    response = await async_client.patch(f"/descriptions/update/{desc_id}", json=payload)
+
+    assert response.status_code == 404
+    assert response.json()["detail"] == expected_response
+
+
+@pytest.mark.anyio
+async def test_update_description_integrity_error(
+    async_client: AsyncClient, db_session: Session
+):
+    desc = create_description()
+    desc_2 = create_description(in_polish="test")
+    payload = {"type": WordTypes.ADJECTIVE, "in_polish": desc_2.in_polish}
+    expected_response = (
+        "Unique constraint violated. Key (in_polish)=(test) already exists."
+    )
+
+    response = await async_client.patch(f"/descriptions/update/{desc.id}", json=payload)
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == expected_response
+
+
+@pytest.mark.anyio
+async def test_delete_description_successfully(
+    async_client: AsyncClient, db_session: Session
+):
+    desc = create_description()
+    desc = db_session.query(Description).filter_by(id=desc.id).first()
+    assert desc is not None
+
+    response = await async_client.delete(f"/descriptions/delete/{desc.id}")
+
+    assert response.status_code == 204
+    desc = db_session.query(Description).filter_by(id=desc.id).first()
+    assert desc is None
+
+
+@pytest.mark.anyio
+async def test_delete_description_invalid_description_id(
+    async_client: AsyncClient, db_session: Session
+):
+    desc_id = 123
+    expected_response = f"Description with the ID: {desc_id} was not found."
+
+    response = await async_client.delete(f"/descriptions/delete/{desc_id}")
+
+    assert response.status_code == 404
     assert response.json()["detail"] == expected_response
