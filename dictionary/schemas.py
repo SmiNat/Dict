@@ -80,3 +80,21 @@ class WordDescriptionsModel(BaseModel):
     description: list[DescriptionReturn]
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class LevelWeightModel(BaseModel):
+    "Model for returning levels with its weights."
+
+    level: MasterLevel | None = Field(default=None, examples=[None])
+    default_weight: float
+    new_weight: float | None = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class LevelReturn(BaseModel):
+    "Model for returning all levels stored in the database."
+
+    levels: list[LevelWeightModel]
+
+    model_config = ConfigDict(from_attributes=True)
