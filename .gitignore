@@ -31,3 +31,7 @@ coverage.xml
 .hypothesis/
 .pytest_cache/
 cover/
+
+# Alembic
+alembic/versions/*
+alembic.ini

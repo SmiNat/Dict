@@ -46,6 +46,7 @@ class WordTypes(str, Enum):
         "spójnik",
     )  # łączy zdania lub wyrażenia, np. albo, więc, oraz, i, aby, bo;
     INTERJECTION = "interjection", "wykrzyknik"
+    IDIOM = "idiom", "idiom"
 
 
 class MasterLevel(str, Enum):

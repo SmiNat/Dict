@@ -9,8 +9,10 @@ App:
 - installed pydantic-settings-2.5.2
 4. pip install psycopg2-binary
 - installed psycopg2-binary-2.9.9
+5. pip install alembic
+- installed Mako-1.3.5 alembic-1.13.2
 Dev (tests):
-5. pip install pytest
+6. pip install pytest
 - installed iniconfig-2.0.0 packaging-24.1 pluggy-1.5.0 pytest-8.3.3
-6. pip install pytest-asyncio
+7. pip install pytest-asyncio
 - installed pytest-asyncio-0.24.0
