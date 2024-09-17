@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 
 from dictionary.database import get_db
 from dictionary.enums import MasterLevel
-from dictionary.models import LevelWeight, Word
+from dictionary.models import Description, LevelWeight, Word
 from dictionary.schemas import LevelReturn
 
 logger = logging.getLogger(__name__)
@@ -20,10 +20,12 @@ db_dependency = Annotated[Session, Depends(get_db)]
 
 
 class Shuffle:
-    recent_words = []
+    recent_words = []  # up to last 3 randomly selected words
+    last_description = None
 
     @classmethod
     def database_levels(cls, db: Session):
+        "Sets the default value of master levels."
         levels = db.query(LevelWeight).all()
         if not levels:
             for level in MasterLevel:
@@ -35,6 +37,7 @@ class Shuffle:
 
     @classmethod
     def update_recent_words(cls, word: str):
+        "Updates recent_words class variable each time the fetch_word method is used."
         word_list = cls.recent_words[:3]
         if word in word_list:
             raise ValueError("The word/sentence '%s' is already on the list." % word)
@@ -43,6 +46,8 @@ class Shuffle:
 
     @classmethod
     def update_level(cls, db: Session, level: MasterLevel, value: float):
+        """Sets or updates the new value of the master level weight.
+        Default value is still preserved."""
         if value < 0 or value > 5:
             raise ValueError("The acceptable value range is from 0 to 5.0.")
         if level not in MasterLevel.list_of_values():
@@ -65,8 +70,14 @@ class Shuffle:
 
     @classmethod
     def fetch_word(cls, db: Session):
+        """Extract random word/sentence from the database.
+        The probability of extracting a word/sentence depends on the weight of
+        the master level value.
+        Returns description ID and description in Polish as a tuple."""
         # Extracting all words and levels from db
-        words = db.query(Word).with_entities(Word.word, Word.master_level).all()
+        words = (
+            db.query(Word).with_entities(Word.id, Word.word, Word.master_level).all()
+        )
         if not words:
             raise ValueError("No words found in the database.")
 
@@ -84,14 +95,16 @@ class Shuffle:
         # Creating a list of tuples with two values (word itself, level weight)
         word_with_weight_list = [
             (
-                word[0],  # The word itself
-                level_weights[word[1]]["new"]  # Use new_weight if set (not None)
-                if level_weights[word[1]]["new"] is not None
-                else level_weights[word[1]]["default"],  # Fall back to default_weight
+                (word.id, word.word),
+                level_weights[word.master_level]["new"]  # Use new_weight if not None
+                if level_weights[word.master_level]["new"] is not None
+                else level_weights[word.master_level][
+                    "default"
+                ],  # Fall back to default_weight
             )
             for word in words
         ]
-        logger.debug("List of words with weights: %s." % word_with_weight_list)
+        logger.debug("List of words with weights: %s" % word_with_weight_list)
 
         # Unpacking the words and their corresponding weights into separate lists
         words_list, weights = zip(*word_with_weight_list)
@@ -103,19 +116,44 @@ class Shuffle:
             new_word = False
             while not new_word:
                 selected_word = random.choices(words_list, weights=weights, k=1)[0]
-                logger.debug("Random word: %s." % selected_word)
+                logger.debug(
+                    "Random word: %s (id: %s)" % (selected_word[1], selected_word[0])
+                )
                 try:
-                    cls.update_recent_words(selected_word)
+                    cls.update_recent_words(selected_word[1])
                     new_word = True
                 except ValueError:
                     continue
         else:
             selected_word = random.choices(words_list, weights=weights, k=1)[0]
-            cls.recent_words.insert(0, selected_word)
+            cls.recent_words.insert(0, selected_word[1])
             cls.recent_words = cls.recent_words[:3]
         logger.debug("recent_words list at the end: %s" % cls.recent_words)
 
         return selected_word
+
+    @classmethod
+    def fetch_description(cls, db: Session):
+        """Extract random description from the database.
+        Returns description ID and description in Polish as a tuple."""
+        descriptions = (
+            db.query(Description)
+            .with_entities(Description.id, Description.in_polish)
+            .all()
+        )
+        if not descriptions:
+            raise ValueError("No descriptions found in the database.")
+
+        new = False
+        while not new:
+            logger.debug("Last decription: %s" % cls.last_description)
+            selected_description = random.choice(descriptions)
+            if selected_description[1] != cls.last_description:
+                cls.last_description = selected_description[1]
+                new = True
+        logger.debug("New decription: %s" % cls.last_description)
+
+        return selected_description
 
 
 @router.get("/all_levels", response_model=LevelReturn)
@@ -131,7 +169,13 @@ async def update_level_weight(
     Shuffle.update_level(db, level, value)
 
 
-@router.get("/random")
+@router.get("/random_word")
 async def get_random_word(db: db_dependency):
     word = Shuffle.fetch_word(db)
-    return {"word": word}
+    return {"word": word[1], "id": word[0]}
+
+
+@router.get("/random_desc")
+async def get_random_description(db: db_dependency):
+    desc = Shuffle.fetch_description(db)
+    return {"description": desc[1], "id": desc[0]}
