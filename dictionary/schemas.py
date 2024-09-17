@@ -86,8 +86,8 @@ class LevelWeightModel(BaseModel):
     "Model for returning levels with its weights."
 
     level: MasterLevel | None = Field(default=None, examples=[None])
-    default_weight: float
-    new_weight: float | None = None
+    default_weight: float | int
+    new_weight: float | int | None = None
 
     model_config = ConfigDict(from_attributes=True)
 

@@ -12,6 +12,6 @@ configure_logging()
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="Learning English", version="0.1.0")
-app.include_router(desc_router)
 app.include_router(shuffle_router)
+app.include_router(desc_router)
 app.include_router(word_router)

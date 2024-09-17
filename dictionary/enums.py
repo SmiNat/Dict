@@ -2,14 +2,14 @@ from enum import Enum
 
 
 class WordTypes(str, Enum):
-    def __new__(cls, value, translation):
+    def __new__(cls, value: str, translation: str):
         obj = str.__new__(cls, value)
         obj._value_ = value
         obj.translation = translation
         return obj
 
     @classmethod
-    def list_of_values(cls):
+    def list_of_values(cls) -> list[str]:
         return list(map(lambda c: c.value, cls))
 
     NOUN = "noun", "rzeczownik"  # kto? co?
@@ -50,11 +50,39 @@ class WordTypes(str, Enum):
 
 
 class MasterLevel(str, Enum):
+    def __new__(cls, value: str, weight: float | int):
+        obj = str.__new__(cls, value)
+        obj._value_ = value  # The string label (e.g., "new", "medium")
+        obj.weight = weight  # The float weight (e.g., 1.0, 0.8)
+        return obj
+
     @classmethod
-    def list_of_values(cls):
+    def list_of_values(cls) -> list[str]:
         return list(map(lambda c: c.value, cls))
 
-    NEW = "new"
-    MEDIUM = "medium"
-    PERFECT = "prefect"
-    HARD = "hard"
+    NEW = "new", 1.0
+    MEDIUM = "medium", 0.8
+    PERFECT = "prefect", 0.3
+    HARD = "hard", 1.5
+
+
+# class MasterLevel(str, Enum):
+#     @classmethod
+#     def list_of_values(cls):
+#         return list(map(lambda c: c.value, cls))
+
+#     NEW = "new"
+#     MEDIUM = "medium"
+#     PERFECT = "prefect"
+#     HARD = "hard"
+
+
+# class MasterLevelWeight(Enum):
+#     @classmethod
+#     def list_of_values(cls):
+#         return list(map(lambda c: c.value, cls))
+
+#     NEW = 1.0
+#     MEDIUM = 0.8
+#     PERFECT = 0.3
+#     HARD = 1.5

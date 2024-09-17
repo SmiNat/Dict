@@ -20,23 +20,26 @@ db_dependency = Annotated[Session, Depends(get_db)]
 
 
 class Shuffle:
-    default_levels = {
-        MasterLevel.NEW: 1.0,
-        MasterLevel.MEDIUM: 0.8,
-        MasterLevel.HARD: 1.5,
-        MasterLevel.PERFECT: 0.3,
-    }
+    recent_words = []
 
     @classmethod
-    def populate_database(cls, db: Session):
+    def database_levels(cls, db: Session):
         levels = db.query(LevelWeight).all()
         if not levels:
-            for key, value in cls.default_levels.items():
-                lvl = LevelWeight(level=key, default_weight=value)
+            for level in MasterLevel:
+                lvl = LevelWeight(level=level.value, default_weight=level.weight)
                 db.add(lvl)
                 db.commit()
             levels = db.query(LevelWeight).all()
         return levels
+
+    @classmethod
+    def update_recent_words(cls, word: str):
+        word_list = cls.recent_words[:3]
+        if word in word_list:
+            raise ValueError("The word/sentence '%s' is already on the list." % word)
+        word_list.insert(0, word)
+        cls.recent_words = word_list[:3]
 
     @classmethod
     def update_level(cls, db: Session, level: MasterLevel, value: float):
@@ -47,6 +50,8 @@ class Shuffle:
                 "Invalid level name. Acceptable levels: %s."
                 % MasterLevel.list_of_values()
             )
+
+        cls.database_levels(db)  # to make sure that db is populated with default levels
 
         db_level = db.query(LevelWeight).filter_by(level=level).first()
         if not db_level:
@@ -60,66 +65,63 @@ class Shuffle:
 
     @classmethod
     def fetch_word(cls, db: Session):
-        cls.populate_database(db)
-
+        # Extracting all words and levels from db
         words = db.query(Word).with_entities(Word.word, Word.master_level).all()
         if not words:
             raise ValueError("No words found in the database.")
 
-        levels = (
-            db.query(LevelWeight)
-            .with_entities(
-                LevelWeight.level, LevelWeight.default_weight, LevelWeight.new_weight
-            )
-            .all()
-        )
+        levels = cls.database_levels(db)
         if not levels:
-            raise ImportError("No word levels specified in the database.")
-        level_weights = {}
-        for level in levels:
-            level_weights[level[0]] = {"default": level[1], "new": level[2]}
+            raise ImportError("No levels specified in the database.")
 
+        # Mapping the levels with weights
+        level_weights = {
+            level.level: {"default": level.default_weight, "new": level.new_weight}
+            for level in levels
+        }
         logger.debug("Level weights: %s." % level_weights)
 
-        word_with_weight_list = []
-        for word in words:
-            weights = db.query(LevelWeight).filter_by(level=word[1]).first()
-            word_with_weight_list.append(
-                # (word[0], cls.default_levels.get(word[1], 1.0))
-                (
-                    word[0],
-                    weights.default_weight
-                    if not weights.new_weight
-                    else weights.new_weight,
-                )
+        # Creating a list of tuples with two values (word itself, level weight)
+        word_with_weight_list = [
+            (
+                word[0],  # The word itself
+                level_weights[word[1]]["new"]  # Use new_weight if set (not None)
+                if level_weights[word[1]]["new"] is not None
+                else level_weights[word[1]]["default"],  # Fall back to default_weight
             )
+            for word in words
+        ]
+        logger.debug("List of words with weights: %s." % word_with_weight_list)
 
-        logging.debug("List of words with weights: %s." % word_with_weight_list)
-
+        # Unpacking the words and their corresponding weights into separate lists
         words_list, weights = zip(*word_with_weight_list)
 
-        selected_word = random.choices(words_list, weights=weights, k=1)[0]
+        # Looping over the random words to add a new word to the recent_words list
+        # Goal: if the database has more than 3 records, last 3 random words should be unique
+        logger.debug("recent_words list at the beginning: %s" % cls.recent_words)
+        if len(words) > 3:
+            new_word = False
+            while not new_word:
+                selected_word = random.choices(words_list, weights=weights, k=1)[0]
+                logger.debug("Random word: %s." % selected_word)
+                try:
+                    cls.update_recent_words(selected_word)
+                    new_word = True
+                except ValueError:
+                    continue
+        else:
+            selected_word = random.choices(words_list, weights=weights, k=1)[0]
+            cls.recent_words.insert(0, selected_word)
+            cls.recent_words = cls.recent_words[:3]
+        logger.debug("recent_words list at the end: %s" % cls.recent_words)
 
         return selected_word
 
 
 @router.get("/all_levels", response_model=LevelReturn)
 async def get_all_levels(db: db_dependency):
-    levels = Shuffle.populate_database(db)
+    levels = Shuffle.database_levels(db)
     return {"levels": levels}
-
-
-@router.get("/levels/default")
-async def get_default_level_weights():
-    print("✅✅", Shuffle.default_levels)
-    return Shuffle.default_levels
-
-
-@router.get("/levels/current")
-async def get_current_level_weights():
-    # print("✅✅", Shuffle.default_levels)
-    # return Shuffle.default_levels
-    pass
 
 
 @router.post("/lvl_weight/update")
