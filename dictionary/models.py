@@ -1,7 +1,9 @@
 from sqlalchemy import (
+    CheckConstraint,
     Column,
     DateTime,
     Enum,
+    Float,
     ForeignKey,
     Index,
     Integer,
@@ -84,4 +86,20 @@ class WordDescription(Base):
 
     __table_args__ = (
         Index("idx_unique_word_description", word_id, description_id, unique=True),
+    )
+
+
+class LevelWeight(Base):
+    __tablename__ = "level_weight"
+
+    id = Column(Integer, primary_key=True, unique=True, autoincrement=True)
+    level = Column(Enum(MasterLevel), unique=True, nullable=False)
+    default_weight = Column(Float, nullable=False)
+    new_weight = Column(Float, nullable=True)
+
+    __table_args__ = (
+        CheckConstraint(
+            "default_weight >= 0 AND default_weight <= 5", name="check_default_weight"
+        ),
+        CheckConstraint("new_weight >= 0 AND new_weight <= 5", name="check_new_weight"),
     )

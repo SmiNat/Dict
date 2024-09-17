@@ -211,7 +211,7 @@ async def test_add_new_description_intgrity_error_while_adding_the_same_desc(
     response = await async_client.post(f"/descriptions/add/{word.id}", json=payload)
 
     expected_response = (
-        "Unique constraint violated. Key (in_polish)=(test) already exists."
+        "Database constraint violated. Key (in_polish)=(test) already exists."
     )
     assert response.status_code == 400
     assert response.json()["detail"] == expected_response
@@ -299,7 +299,7 @@ async def test_assign_description_intgrity_error_while_adding_the_same_word_and_
     word = create_word()
     desc = create_description()
     word_desc = create_word_definition_association_table(word.id, desc.id)
-    expected_response = "Unique constraint violated. Key (word_id, description_id)=(1, 1) already exists."
+    expected_response = "Database constraint violated. Key (word_id, description_id)=(1, 1) already exists."
 
     response = await async_client.post(f"/descriptions/assign/{word.id}/{desc.id}")
 
@@ -391,7 +391,7 @@ async def test_update_description_integrity_error(
     desc_2 = create_description(in_polish="test")
     payload = {"type": WordTypes.ADJECTIVE, "in_polish": desc_2.in_polish}
     expected_response = (
-        "Unique constraint violated. Key (in_polish)=(test) already exists."
+        "Database constraint violated. Key (in_polish)=(test) already exists."
     )
 
     response = await async_client.patch(f"/descriptions/update/{desc.id}", json=payload)

@@ -62,7 +62,7 @@ async def test_get_all_words_with_multiple_words_in_db(
 ):
     word_1 = create_word()
     word_2 = create_word(word="test", notes="test note")
-    word_3 = create_word(word="fallout", master_level="hard")
+    word_3 = create_word(word="fallout", master_level=MasterLevel.HARD)
     words = [word_1, word_2, word_3]
     expected_response = {
         "number_of_words": 3,
@@ -505,7 +505,9 @@ async def test_add_new_word_intgrity_error_while_adding_the_same_word(
 
     response = await async_client.post("/words/add", json=payload)
 
-    expected_response = "Unique constraint violated. Key (word)=(test) already exists."
+    expected_response = (
+        "Database constraint violated. Key (word)=(test) already exists."
+    )
     assert response.status_code == 400
     assert response.json()["detail"] == expected_response
 
@@ -572,7 +574,9 @@ async def test_update_a_word_integrity_error(
 
     response = await async_client.patch(f"/words/update/{word.id}", json=payload)
 
-    expected_response = "Unique constraint violated. Key (word)=(test) already exists."
+    expected_response = (
+        "Database constraint violated. Key (word)=(test) already exists."
+    )
     assert response.status_code == 400
     assert response.json()["detail"] == expected_response
 
@@ -591,7 +595,7 @@ async def test_update_a_word_invalid_enum_parameter(
     assert expected_response in response.json()["detail"][0]["msg"]
     word_updated = db_session.query(Word).filter_by(id=word.id).first()
     assert word_updated.master_level != "invalid"
-    assert word_updated.master_level == "new"
+    assert word_updated.master_level == MasterLevel.NEW
 
 
 @pytest.mark.anyio

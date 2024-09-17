@@ -28,6 +28,38 @@ db_dependency = Annotated[Session, Depends(get_db)]
 
 
 @router.get(
+    "/descriptions",
+    status_code=200,
+    response_model=list[WordDescriptionsModel],
+    response_model_exclude_none=True,
+    response_model_exclude_unset=True,
+)
+async def get_all_dict_data(db: db_dependency):
+    words = db.query(Word).all()
+    if not words:
+        raise HTTPException(404, "Empty database.")
+
+    result = []
+    for word in words:
+        descriptions = (
+            db.query(Description)
+            .join(WordDescription, WordDescription.description_id == Description.id)
+            .filter(WordDescription.word_id == word.id)
+            .all()
+        )
+
+        # Converting SQLAlchemy objects to Pydantic models
+        word_data = WordReturn.model_validate(word)
+        description_data = [
+            DescriptionReturn.model_validate(desc) for desc in descriptions
+        ]
+
+        result.append({"word": word_data, "description": description_data})
+
+    return result
+
+
+@router.get(
     "/all",
     response_model=AllWords,
     response_model_exclude_none=True,
@@ -98,38 +130,6 @@ async def get_word_translations(
         )
 
     return results
-
-
-@router.get(
-    "/descriptions",
-    status_code=200,
-    response_model=list[WordDescriptionsModel],
-    response_model_exclude_none=True,
-    response_model_exclude_unset=True,
-)
-async def get_all_dict_data(db: db_dependency):
-    words = db.query(Word).all()
-    if not words:
-        raise HTTPException(404, "Empty database.")
-
-    result = []
-    for word in words:
-        descriptions = (
-            db.query(Description)
-            .join(WordDescription, WordDescription.description_id == Description.id)
-            .filter(WordDescription.word_id == word.id)
-            .all()
-        )
-
-        # Converting SQLAlchemy objects to Pydantic models
-        word_data = WordReturn.model_validate(word)
-        description_data = [
-            DescriptionReturn.model_validate(desc) for desc in descriptions
-        ]
-
-        result.append({"word": word_data, "description": description_data})
-
-    return result
 
 
 @router.get(
