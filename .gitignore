@@ -7,6 +7,7 @@
 # DATABASE
 *.db
 *.log
+*.log.*
 
 # PYTHON
 __pycache__/
