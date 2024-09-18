@@ -92,7 +92,7 @@ async def test_get_single_description_empty_db(
 
 
 @pytest.mark.anyio
-async def test_get_single_description_successfull(
+async def test_get_single_description_successful(
     async_client: AsyncClient, db_session: Session
 ):
     desc = create_description()
@@ -106,7 +106,7 @@ async def test_get_single_description_successfull(
 
 
 @pytest.mark.anyio
-async def test_add_new_description_successfull(
+async def test_add_new_description_successful(
     async_client: AsyncClient, db_session: Session
 ):
     word = create_word()
@@ -218,7 +218,7 @@ async def test_add_new_description_intgrity_error_while_adding_the_same_desc(
 
 
 @pytest.mark.anyio
-async def test_assign_description_to_a_word_successfull(
+async def test_assign_description_to_a_word_successful(
     async_client: AsyncClient, db_session: Session
 ):
     word = create_word()
@@ -308,7 +308,7 @@ async def test_assign_description_intgrity_error_while_adding_the_same_word_and_
 
 
 @pytest.mark.anyio
-async def test_update_description_successfull(
+async def test_update_description_successful(
     async_client: AsyncClient, db_session: Session
 ):
     desc = create_description()

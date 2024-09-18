@@ -478,7 +478,7 @@ async def test_get_single_word_with_with_multiple_descriptions(
 
 
 @pytest.mark.anyio
-async def test_add_new_word_successfull(async_client: AsyncClient, db_session: Session):
+async def test_add_new_word_successful(async_client: AsyncClient, db_session: Session):
     payload = {"word": "test", "master_level": MasterLevel.NEW, "notes": "example"}
     word = db_session.query(Word).filter_by(word=payload["word"]).first()
     assert word is None
@@ -541,9 +541,7 @@ async def test_update_a_word_with_word_not_found(
 
 
 @pytest.mark.anyio
-async def test_update_a_word_successfully(
-    async_client: AsyncClient, db_session: Session
-):
+async def test_update_a_word_successful(async_client: AsyncClient, db_session: Session):
     word = create_word()
     word = db_session.query(Word).filter_by(word=word.word).first()
     assert word is not None
@@ -599,9 +597,7 @@ async def test_update_a_word_invalid_enum_parameter(
 
 
 @pytest.mark.anyio
-async def test_delete_a_word_successfully(
-    async_client: AsyncClient, db_session: Session
-):
+async def test_delete_a_word_successful(async_client: AsyncClient, db_session: Session):
     word = create_word()
     word = db_session.query(Word).filter_by(word=word.word).first()
     assert word is not None

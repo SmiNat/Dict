@@ -2,7 +2,7 @@ import logging
 import random
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from dictionary.database import get_db
@@ -37,11 +37,11 @@ class Shuffle:
         return levels
 
     @classmethod
-    def update_recent_words(cls, word: str):
+    def _update_recent_words(cls, word: str):
         "Updates recent_words class variable each time the fetch_word method is used."
         word_list = cls.recent_words[:3]
         if word in word_list:
-            raise DatabaseError("The word/sentence '%s' is already on the list." % word)
+            raise ValueError("The word/sentence '%s' is already on the list." % word)
         word_list.insert(0, word)
         cls.recent_words = word_list[:3]
 
@@ -54,14 +54,17 @@ class Shuffle:
         if level not in MasterLevel.list_of_values():
             raise DatabaseError(
                 "Invalid level name. Acceptable levels: %s."
-                % MasterLevel.list_of_values()
+                % MasterLevel.list_of_values(),
+                status_code=400,
             )
 
         cls.database_levels(db)  # to make sure that db is populated with default levels
 
         db_level = db.query(LevelWeight).filter_by(level=level).first()
         if not db_level:
-            raise DatabaseError("No '%s' level found in the database." % level)
+            raise DatabaseError(
+                "No '%s' level found in the database." % level.value, status_code=404
+            )
 
         db_level.new_weight = value
         db.commit()
@@ -80,11 +83,11 @@ class Shuffle:
             db.query(Word).with_entities(Word.id, Word.word, Word.master_level).all()
         )
         if not words:
-            raise DatabaseError("No words found in the database.")
+            raise DatabaseError("No words found in the database.", status_code=404)
 
         levels = cls.database_levels(db)
         if not levels:
-            raise DatabaseError("No levels specified in the database.")
+            raise DatabaseError("No levels specified in the database.", status_code=404)
 
         # Mapping the levels with weights
         level_weights = {
@@ -121,7 +124,7 @@ class Shuffle:
                     "Random word: %s (id: %s)" % (selected_word[1], selected_word[0])
                 )
                 try:
-                    cls.update_recent_words(selected_word[1])
+                    cls._update_recent_words(selected_word[1])
                     new_word = True
                 except DatabaseError:
                     continue
@@ -143,7 +146,9 @@ class Shuffle:
             .all()
         )
         if not descriptions:
-            raise DatabaseError("No descriptions found in the database.")
+            raise DatabaseError(
+                "No descriptions found in the database.", status_code=404
+            )
 
         new = False
         while not new:
@@ -169,16 +174,29 @@ async def update_level_weight(
     level: MasterLevel,
     value: float = Query(default=1.0, ge=0.0, le=5.0),
 ):
-    Shuffle.update_level(db, level, value)
+    try:
+        Shuffle.update_level(db, level, value)
+    except (DatabaseError, ValueError) as exc_info:
+        raise HTTPException(400, str(exc_info))
 
 
 @router.get("/random_word")
 async def get_random_word(db: db_dependency):
-    word = Shuffle.fetch_word(db)
-    return {"word": word[1], "id": word[0]}
+    try:
+        word = Shuffle.fetch_word(db)
+        return {"word": word[1], "id": word[0]}
+    except DatabaseError as exc_info:
+        raise HTTPException(
+            exc_info.status_code if exc_info.status_code else 404, str(exc_info)
+        )
 
 
 @router.get("/random_desc")
 async def get_random_description(db: db_dependency):
-    desc = Shuffle.fetch_description(db)
-    return {"description": desc[1], "id": desc[0]}
+    try:
+        desc = Shuffle.fetch_description(db)
+        return {"description": desc[1], "id": desc[0]}
+    except DatabaseError as exc_info:
+        raise HTTPException(
+            exc_info.status_code if exc_info.status_code else 404, str(exc_info)
+        )
