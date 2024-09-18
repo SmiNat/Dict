@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 
 from dictionary.database import get_db
 from dictionary.enums import MasterLevel
+from dictionary.exceptions import DatabaseError
 from dictionary.models import Description, LevelWeight, Word
 from dictionary.schemas import LevelReturn
 
@@ -40,7 +41,7 @@ class Shuffle:
         "Updates recent_words class variable each time the fetch_word method is used."
         word_list = cls.recent_words[:3]
         if word in word_list:
-            raise ValueError("The word/sentence '%s' is already on the list." % word)
+            raise DatabaseError("The word/sentence '%s' is already on the list." % word)
         word_list.insert(0, word)
         cls.recent_words = word_list[:3]
 
@@ -51,7 +52,7 @@ class Shuffle:
         if value < 0 or value > 5:
             raise ValueError("The acceptable value range is from 0 to 5.0.")
         if level not in MasterLevel.list_of_values():
-            raise TypeError(
+            raise DatabaseError(
                 "Invalid level name. Acceptable levels: %s."
                 % MasterLevel.list_of_values()
             )
@@ -60,7 +61,7 @@ class Shuffle:
 
         db_level = db.query(LevelWeight).filter_by(level=level).first()
         if not db_level:
-            raise ImportError("No level '%s' found in the database." % level)
+            raise DatabaseError("No '%s' level found in the database." % level)
 
         db_level.new_weight = value
         db.commit()
@@ -79,11 +80,11 @@ class Shuffle:
             db.query(Word).with_entities(Word.id, Word.word, Word.master_level).all()
         )
         if not words:
-            raise ValueError("No words found in the database.")
+            raise DatabaseError("No words found in the database.")
 
         levels = cls.database_levels(db)
         if not levels:
-            raise ImportError("No levels specified in the database.")
+            raise DatabaseError("No levels specified in the database.")
 
         # Mapping the levels with weights
         level_weights = {
@@ -122,7 +123,7 @@ class Shuffle:
                 try:
                     cls.update_recent_words(selected_word[1])
                     new_word = True
-                except ValueError:
+                except DatabaseError:
                     continue
         else:
             selected_word = random.choices(words_list, weights=weights, k=1)[0]
@@ -142,7 +143,7 @@ class Shuffle:
             .all()
         )
         if not descriptions:
-            raise ValueError("No descriptions found in the database.")
+            raise DatabaseError("No descriptions found in the database.")
 
         new = False
         while not new:
@@ -164,7 +165,9 @@ async def get_all_levels(db: db_dependency):
 
 @router.post("/lvl_weight/update")
 async def update_level_weight(
-    db: db_dependency, level: MasterLevel, value: float = Query(default=1.0, ge=0, le=5)
+    db: db_dependency,
+    level: MasterLevel,
+    value: float = Query(default=1.0, ge=0.0, le=5.0),
 ):
     Shuffle.update_level(db, level, value)
 
