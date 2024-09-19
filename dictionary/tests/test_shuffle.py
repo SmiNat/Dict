@@ -2,6 +2,8 @@ import logging
 from unittest.mock import patch
 
 import pytest
+from fastapi import HTTPException  # noqa
+from httpx import AsyncClient
 from sqlalchemy.orm import Session
 
 from dictionary.enums import MasterLevel
@@ -185,3 +187,188 @@ def test_fetch_description_method_empty_db(db_session: Session):
 
     assert expected_message == exc_info.value.message
     assert 404 == exc_info.value.status_code
+
+
+@pytest.mark.anyio
+async def test_get_all_levels_endpoint_successful_with_no_new_weights(
+    db_session: Session, async_client: AsyncClient
+):
+    expected_response = []
+    for x in range(len(MasterLevel)):
+        expected_response.append(
+            {
+                "level": MasterLevel.list_of_values()[x],
+                "default_weight": MasterLevel.list_of_weights()[x],
+                "new_weight": None,
+            }
+        )
+
+    response = await async_client.get("/shuffle/all_levels")
+    assert response.status_code == 200
+    assert response.json() == {"levels": expected_response}
+
+
+@pytest.mark.anyio
+async def test_get_all_levels_endpoint_successful_with_new_weights(
+    db_session: Session, async_client: AsyncClient
+):
+    new_weight = {"level": MasterLevel.HARD, "value": 3.1}
+    Shuffle.update_level(db_session, new_weight["level"], value=new_weight["value"])
+    expected_response = []
+    for x in range(len(MasterLevel)):
+        expected_response.append(
+            {
+                "level": MasterLevel.list_of_values()[x],
+                "default_weight": MasterLevel.list_of_weights()[x],
+                "new_weight": new_weight["value"]
+                if MasterLevel.list_of_values()[x] == new_weight["level"]
+                else None,
+            }
+        )
+
+    response = await async_client.get("/shuffle/all_levels")
+    assert response.status_code == 200
+    assert response.json() == {"levels": expected_response}
+
+
+@pytest.mark.anyio
+async def test_update_level_weight_endpoint_successful_empty_db(
+    db_session: Session, async_client: AsyncClient
+):
+    level_hard = db_session.query(LevelWeight).filter_by(level=MasterLevel.HARD).first()
+    assert level_hard is None
+
+    payload = {"level": MasterLevel.HARD.value, "value": 3.3}
+
+    await async_client.post("/shuffle/lvl_weight/update", params=payload)
+
+    level_hard = db_session.query(LevelWeight).filter_by(level=MasterLevel.HARD).first()
+    assert level_hard.default_weight == MasterLevel.HARD.weight
+    assert level_hard.new_weight == payload["value"]
+
+
+@pytest.mark.anyio
+async def test_update_level_weight_endpoint_successful_not_empty_db(
+    db_session: Session, async_client: AsyncClient
+):
+    Shuffle.database_levels(db_session)
+    level_hard = db_session.query(LevelWeight).filter_by(level=MasterLevel.HARD).first()
+    assert level_hard is not None
+    assert level_hard.default_weight == MasterLevel.HARD.weight
+    assert level_hard.new_weight is None
+
+    payload = {"level": MasterLevel.HARD.value, "value": 3.3}
+
+    await async_client.post("/shuffle/lvl_weight/update", params=payload)
+
+    level_hard = db_session.query(LevelWeight).filter_by(level=MasterLevel.HARD).first()
+    assert level_hard.default_weight == MasterLevel.HARD.weight
+    assert level_hard.new_weight == payload["value"]
+
+
+@pytest.mark.anyio
+async def test_update_level_weight_endpoint_422_with_incorrect_weight_value(
+    db_session: Session, async_client: AsyncClient
+):
+    Shuffle.database_levels(db_session)
+    level_hard = db_session.query(LevelWeight).filter_by(level=MasterLevel.HARD).first()
+    assert level_hard is not None
+    assert level_hard.default_weight == MasterLevel.HARD.weight
+    assert level_hard.new_weight is None
+
+    expected_message = "Input should be less than or equal to 5"
+    payload_invalid_value = {"level": MasterLevel.HARD.value, "value": 777}
+
+    response = await async_client.post(
+        "/shuffle/lvl_weight/update", params=payload_invalid_value
+    )
+
+    level_hard = db_session.query(LevelWeight).filter_by(level=MasterLevel.HARD).first()
+    assert level_hard.default_weight == MasterLevel.HARD.weight
+    assert level_hard.new_weight is None
+    assert response.status_code == 422
+    assert response.json()["detail"][0]["msg"] == expected_message
+
+
+@pytest.mark.anyio
+async def test_update_level_weight_endpoint_422_with_invalid_level(
+    db_session: Session, async_client: AsyncClient
+):
+    Shuffle.database_levels(db_session)
+    level_hard = db_session.query(LevelWeight).filter_by(level=MasterLevel.HARD).first()
+    assert level_hard is not None
+    assert level_hard.default_weight == MasterLevel.HARD.weight
+    assert level_hard.new_weight is None
+
+    expected_message = "Input should be 'new', 'medium', 'prefect' or 'hard'"
+    payload_invalid_value = {"level": "invalid", "value": 3.1}
+
+    response = await async_client.post(
+        "/shuffle/lvl_weight/update", params=payload_invalid_value
+    )
+
+    level_hard = db_session.query(LevelWeight).filter_by(level=MasterLevel.HARD).first()
+    assert level_hard.default_weight == MasterLevel.HARD.weight
+    assert level_hard.new_weight is None
+    assert response.status_code == 422
+    assert response.json()["detail"][0]["msg"] == expected_message
+
+
+@pytest.mark.anyio
+async def test_get_random_word_successful(
+    db_session: Session, async_client: AsyncClient
+):
+    with patch.object(Shuffle, "fetch_word") as mocked_word:
+        mocked_word.return_value = (1, "test")
+        response = await async_client.get("/shuffle/random_word")
+
+    assert response.status_code == 200
+    assert response.json() == {"word": "test", "id": 1}
+
+
+@pytest.mark.anyio
+async def test_get_random_word_404_empty_words_table_in_db(
+    db_session: Session, async_client: AsyncClient
+):
+    expected_message = "No words found in the database."
+    response = await async_client.get("/shuffle/random_word")
+
+    assert response.status_code == 404
+    assert response.json()["detail"] == expected_message
+
+
+@pytest.mark.anyio
+async def test_get_random_word_404_empty_levelweight_table_in_db(
+    db_session: Session, async_client: AsyncClient
+):
+    create_word()
+    expected_message = "No levels specified in the database."
+    with patch.object(Shuffle, "database_levels") as mocked_levels:
+        mocked_levels.return_value = []
+        response = await async_client.get("/shuffle/random_word")
+
+    assert response.status_code == 404
+    assert response.json()["detail"] == expected_message
+
+
+@pytest.mark.anyio
+async def test_get_random_description_successful(
+    db_session: Session, async_client: AsyncClient
+):
+    with patch.object(Shuffle, "fetch_description") as mocked_desc:
+        mocked_desc.return_value = (1, "test")
+        response = await async_client.get("/shuffle/random_desc")
+
+    assert response.status_code == 200
+    assert response.json() == {"description": "test", "id": 1}
+
+
+@pytest.mark.anyio
+async def test_get_random_word_404_empty_description_table_in_db(
+    db_session: Session, async_client: AsyncClient
+):
+    expected_message = "No descriptions found in the database."
+    response = await async_client.get("/shuffle/random_desc")
+
+    assert response.status_code == 404
+    assert response.json()["detail"] == expected_message

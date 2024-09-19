@@ -174,10 +174,7 @@ async def update_level_weight(
     level: MasterLevel,
     value: float = Query(default=1.0, ge=0.0, le=5.0),
 ):
-    try:
-        Shuffle.update_level(db, level, value)
-    except (DatabaseError, ValueError) as exc_info:
-        raise HTTPException(400, str(exc_info))
+    Shuffle.update_level(db, level, value)
 
 
 @router.get("/random_word")
