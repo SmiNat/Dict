@@ -47,7 +47,7 @@ class Shuffle:
 
     @classmethod
     def update_level(cls, db: Session, level: MasterLevel, value: float):
-        """Sets or updates the new value of the master level weight.
+        """Sets a new value or updates the value of the master level weight.
         Default value is still preserved."""
         if value < 0 or value > 5:
             raise ValueError("The acceptable value range is from 0 to 5.0.")
@@ -121,12 +121,12 @@ class Shuffle:
             while not new_word:
                 selected_word = random.choices(words_list, weights=weights, k=1)[0]
                 logger.debug(
-                    "Random word: %s (id: %s)" % (selected_word[1], selected_word[0])
+                    "Random word: %s (ID: %s)" % (selected_word[1], selected_word[0])
                 )
                 try:
                     cls._update_recent_words(selected_word[1])
                     new_word = True
-                except DatabaseError:
+                except ValueError:
                     continue
         else:
             selected_word = random.choices(words_list, weights=weights, k=1)[0]
