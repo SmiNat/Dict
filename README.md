@@ -1,4 +1,23 @@
 
+# Simple private dictonary
+API for creating own polish-english dictionary.
+Database stored words/sentences in english (word table) and its descriptions in polish (description table).
+
+User can add new words (full CRUD) with specifying master level for each word separately (how good user knows the word). Default value is set on NEW level (with default weight of 1.0). Each master level has it's own default weight:
+- level NEW: 1.0
+- level MEDIUM: 0.8
+- level PERFECT: 0.3
+- level HARD: 1.5
+ User can also set own weights for each master level (with max value of 5.0).
+ Weights are use for shuffle endpoint where user can perform random choices method on words for repetition purpose.
+
+For each word, user can add multiple descriptions (translations, full CRUD). One description can also be used to define multiple words.
+
+## Required
+Python3.12
+Database connection in PostgreSQL with separate database for prod/dev environment (dict) and for test environment (dict_test).
+
+
 Installed libraries:
 App:
 1. pip install "fastapi[standard]"
