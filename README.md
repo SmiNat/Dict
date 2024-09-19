@@ -33,4 +33,4 @@ Installed libraries:
 6. pip install pytest
     - installed iniconfig-2.0.0 packaging-24.1 pluggy-1.5.0 pytest-8.3.3
 7. pip install pytest-asyncio
-- installed pytest-asyncio-0.24.0
+    - installed pytest-asyncio-0.24.0
