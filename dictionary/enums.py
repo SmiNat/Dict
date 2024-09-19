@@ -36,6 +36,10 @@ class MasterLevel(str, Enum):
     def list_of_values(cls) -> list[str]:
         return list(map(lambda c: c.value, cls))
 
+    @classmethod
+    def list_of_weights(cls) -> list[str]:
+        return list(map(lambda c: c.weight, cls))
+
     NEW = "new", 1.0
     MEDIUM = "medium", 0.8
     PERFECT = "prefect", 0.3

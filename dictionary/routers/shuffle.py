@@ -2,7 +2,7 @@ import logging
 import random
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from dictionary.database import get_db
@@ -37,31 +37,34 @@ class Shuffle:
         return levels
 
     @classmethod
-    def update_recent_words(cls, word: str):
+    def _update_recent_words(cls, word: str):
         "Updates recent_words class variable each time the fetch_word method is used."
         word_list = cls.recent_words[:3]
         if word in word_list:
-            raise DatabaseError("The word/sentence '%s' is already on the list." % word)
+            raise ValueError("The word/sentence '%s' is already on the list." % word)
         word_list.insert(0, word)
         cls.recent_words = word_list[:3]
 
     @classmethod
     def update_level(cls, db: Session, level: MasterLevel, value: float):
-        """Sets or updates the new value of the master level weight.
+        """Sets a new value or updates the value of the master level weight.
         Default value is still preserved."""
         if value < 0 or value > 5:
             raise ValueError("The acceptable value range is from 0 to 5.0.")
         if level not in MasterLevel.list_of_values():
             raise DatabaseError(
                 "Invalid level name. Acceptable levels: %s."
-                % MasterLevel.list_of_values()
+                % MasterLevel.list_of_values(),
+                status_code=400,
             )
 
         cls.database_levels(db)  # to make sure that db is populated with default levels
 
         db_level = db.query(LevelWeight).filter_by(level=level).first()
         if not db_level:
-            raise DatabaseError("No '%s' level found in the database." % level)
+            raise DatabaseError(
+                "No '%s' level found in the database." % level.value, status_code=404
+            )
 
         db_level.new_weight = value
         db.commit()
@@ -80,11 +83,11 @@ class Shuffle:
             db.query(Word).with_entities(Word.id, Word.word, Word.master_level).all()
         )
         if not words:
-            raise DatabaseError("No words found in the database.")
+            raise DatabaseError("No words found in the database.", status_code=404)
 
         levels = cls.database_levels(db)
         if not levels:
-            raise DatabaseError("No levels specified in the database.")
+            raise DatabaseError("No levels specified in the database.", status_code=404)
 
         # Mapping the levels with weights
         level_weights = {
@@ -118,12 +121,12 @@ class Shuffle:
             while not new_word:
                 selected_word = random.choices(words_list, weights=weights, k=1)[0]
                 logger.debug(
-                    "Random word: %s (id: %s)" % (selected_word[1], selected_word[0])
+                    "Random word: %s (ID: %s)" % (selected_word[1], selected_word[0])
                 )
                 try:
-                    cls.update_recent_words(selected_word[1])
+                    cls._update_recent_words(selected_word[1])
                     new_word = True
-                except DatabaseError:
+                except ValueError:
                     continue
         else:
             selected_word = random.choices(words_list, weights=weights, k=1)[0]
@@ -143,7 +146,9 @@ class Shuffle:
             .all()
         )
         if not descriptions:
-            raise DatabaseError("No descriptions found in the database.")
+            raise DatabaseError(
+                "No descriptions found in the database.", status_code=404
+            )
 
         new = False
         while not new:
@@ -174,11 +179,21 @@ async def update_level_weight(
 
 @router.get("/random_word")
 async def get_random_word(db: db_dependency):
-    word = Shuffle.fetch_word(db)
-    return {"word": word[1], "id": word[0]}
+    try:
+        word = Shuffle.fetch_word(db)
+        return {"word": word[1], "id": word[0]}
+    except DatabaseError as exc_info:
+        raise HTTPException(
+            exc_info.status_code if exc_info.status_code else 404, str(exc_info)
+        )
 
 
 @router.get("/random_desc")
 async def get_random_description(db: db_dependency):
-    desc = Shuffle.fetch_description(db)
-    return {"description": desc[1], "id": desc[0]}
+    try:
+        desc = Shuffle.fetch_description(db)
+        return {"description": desc[1], "id": desc[0]}
+    except DatabaseError as exc_info:
+        raise HTTPException(
+            exc_info.status_code if exc_info.status_code else 404, str(exc_info)
+        )
